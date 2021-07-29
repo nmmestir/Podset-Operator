@@ -78,6 +78,37 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			Environment: &r.Environment,
 		})
 
+		
+		
+		err := json.Unmarshal([]byte(*config.Body), &result)
+			if err != nil {
+				fmt.Println("Error", err)
+			}
+		version :=result["Configuration-Version"].(map[string]interface{})
+
+		if version != SecretsRotationMapping.Status.VersionID {
+			fmt.Println("continuing to next loop")
+			continue
+		}
+
+		var deploy v1.DeploymentList
+			//MatchingLabels := SecretsRotationMapping.Spec.Labels
+			r.List(ctx, &deploy, client.MatchingLabels(SecretsRotationMapping.Spec.Labels))
+			//	fmt.Println("List deployments by Label:", deploy)
+
+			for _, deployment := range deploy.Items {
+				// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
+				fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
+				patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-secrets-controller-redeloyed":"%v"}}}}}`, time.Now().Unix()))
+				if err := r.Patch(ctx, &deployment, client.RawPatch(types.StrategicMergePatchType, patch)); err != nil {
+					fmt.Println("Patch deployment err:", err)
+					return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
+				}
+			}
+
+
+
+
 		time.Sleep(30 * time.Minute)
 	}
 	
