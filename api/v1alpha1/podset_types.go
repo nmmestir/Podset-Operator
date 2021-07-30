@@ -31,8 +31,9 @@ type PodSetSpec struct {
 	// Foo is an example field of PodSet. Edit podset_types.go to remove/update
 	//Foo string `json:"foo,omitempty"`
 	//Replicas int32 'json:"replicas"'
-	Arn string 'json:"ARN"'
-	Cible map[string]string 'json:"DeploiementCible"'
+	//Cible map[string]string 'json:"DeploiementCible"'
+	VersionID string 'json"VersionID"'
+	Labels   map[string]string `json:"Labels,omitempty"`
 
 	// arn et deploiement cible
 }
@@ -42,7 +43,7 @@ type PodSetStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	//PodNames []string 'json:"podNames"'
-	VersionID string 'json"VersionID"'
+	//VersionID string 'json"VersionID"'
 	//identifiant de la version
 }
 

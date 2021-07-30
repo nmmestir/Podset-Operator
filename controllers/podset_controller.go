@@ -34,10 +34,11 @@ type PodSetReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	Region       string
-	Application string 
-	ClientConfigurationVersion int32
-	Configuration string
-	Environment string
+	Clock
+	//Application string 
+	//ClientConfigurationVersion int32
+	//Configuration string
+	//Environment string
 }
 
 //+kubebuilder:rbac:groups=my.domain,resources=podsets,verbs=get;list;watch;create;update;patch;delete
@@ -57,11 +58,15 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 
 	var PodSet podsetv1.PodSet
+	var result map[string]interface{}
 
 	if err := r.Get(ctx, req.NamespacedName, &PodSet); err != nil {
+		log.Error(err, "unable to fetch PodSet")
+
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	fmt.Println(PodSet.Spec.Labels)
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(r.Region)},
 	)
