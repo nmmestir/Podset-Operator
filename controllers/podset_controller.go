@@ -57,7 +57,7 @@ type PodSetReconciler struct {
 func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
 
-	var PodSet podsetv1.PodSet
+	var PodSet mydomainv1alpha1.PodSet
 	var result map[string]interface{}
 
 	if err := r.Get(ctx, req.NamespacedName, &PodSet); err != nil {
@@ -91,20 +91,20 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			}
 		version :=result["Configuration-Version"].(map[string]interface{})
 
-		if version != SecretsRotationMapping.Status.VersionID {
+		if version != SecretsRotationMapping.Spec.VersionID {
 			fmt.Println("continuing to next loop")
 			continue
 		}
 
 		var deploy v1.DeploymentList
 			//MatchingLabels := SecretsRotationMapping.Spec.Labels
-			r.List(ctx, &deploy, client.MatchingLabels(SecretsRotationMapping.Spec.Labels))
+			r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
 			//	fmt.Println("List deployments by Label:", deploy)
 
 			for _, deployment := range deploy.Items {
 				// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
 				fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
-				patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-secrets-controller-redeloyed":"%v"}}}}}`, time.Now().Unix()))
+				patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-controller-redeployed":"%v"}}}}}`, time.Now().Unix()))
 				if err := r.Patch(ctx, &deployment, client.RawPatch(types.StrategicMergePatchType, patch)); err != nil {
 					fmt.Println("Patch deployment err:", err)
 					return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil

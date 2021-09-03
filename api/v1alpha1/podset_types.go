@@ -30,7 +30,6 @@ type PodSetSpec struct {
 
 	// Foo is an example field of PodSet. Edit podset_types.go to remove/update
 	//Foo string `json:"foo,omitempty"`
-	//Replicas int32 'json:"replicas"'
 	//Cible map[string]string 'json:"DeploiementCible"'
 	VersionID string 'json"VersionID"'
 	Labels   map[string]string `json:"Labels,omitempty"`
