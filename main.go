@@ -99,6 +99,7 @@ func main() {
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		setupLog.Error(err, "problem running manager")
+		// Boucle à l'infini. Configurer délai
 		os.Exit(1)
 	}
 }

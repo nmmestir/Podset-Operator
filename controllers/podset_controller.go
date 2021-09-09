@@ -18,12 +18,18 @@ package controllers
 
 import (
 	"context"
-	"github.com/aws/aws-sdk-go"
+	"encoding/json"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/appconfig"
+	"github.com/go-logr/logr"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	mydomainv1alpha1 "podset-operator/api/v1alpha1"
 	"time"
@@ -32,13 +38,9 @@ import (
 // PodSetReconciler reconciles a PodSet object
 type PodSetReconciler struct {
 	client.Client
+	Log    logr.Logger
 	Scheme *runtime.Scheme
-	Region       string
-	Clock
-	Application string 
-	ClientConfigurationVersion int32
-	Configuration string
-	Environment string
+	Region string
 }
 
 //+kubebuilder:rbac:groups=my.domain,resources=podsets,verbs=get;list;watch;create;update;patch;delete
@@ -61,7 +63,7 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	var result map[string]interface{}
 
 	if err := r.Get(ctx, req.NamespacedName, &PodSet); err != nil {
-		log.Error(err, "unable to fetch PodSet")
+		ctrl.Log.Error(err, "unable to fetch PodSet")
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -73,55 +75,40 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	svc := appconfig.New(sess)
 
-	
-	for ;; {
-		
-		config, err := svc.GetConfiguration(&appconfig.GetConfigurationInput{
-			Application: &r.Application,
-			ClientConfigurationVersion: &r.ClientConfigurationVersion,
-			Configuration: &r.Configuration,
-			Environment: &r.Environment,
-			//To change if in status
-		})
+	config, err := svc.GetConfiguration(&appconfig.GetConfigurationInput{
+		Application:                &PodSet.Spec.Application,
+		ClientConfigurationVersion: &PodSet.Spec.ClientConfigurationVersion,
+		Configuration:              &PodSet.Spec.Configuration,
+		Environment:                &PodSet.Spec.Environment,
+		//To change if in status
+	})
 
-		
-		
-		err := json.Unmarshal([]byte(*config.Body), &result)
-			if err != nil {
-				fmt.Println("Error", err)
-			}
-		version :=result["Configuration-Version"].(map[string]interface{})
-
-		if version != SecretsRotationMapping.Spec.VersionID {
-			fmt.Println("continuing to next loop")
-			continue
-		}
-
-		
-
-		var deploy v1.DeploymentList
-			//MatchingLabels := SecretsRotationMapping.Spec.Labels
-			r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
-			
-			//	fmt.Println("List deployments by Label:", deploy)
-
-			for _, deployment := range deploy.Items {
-				// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
-				fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
-				patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-controller-redeployed":"%v"}}}}}`, time.Now().Unix()))
-				if err := r.Patch(ctx, &deployment, client.RawPatch(types.StrategicMergePatchType, patch)); err != nil {
-					fmt.Println("Patch deployment err:", err)
-					return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
-				}
-			}
-
-
-
-
-		time.Sleep(30 * time.Minute)
-		// Add the polling
+	err := json.Unmarshal([]byte(*config.Body), &config)
+	if err != nil {
+		fmt.Println("Error", err)
 	}
-	
+	version := result["Configuration-Version"].(map[string]interface{})
+
+	if version != PodSet.Spec.VersionID {
+		fmt.Println("continuing to next loop")
+		continue
+	}
+
+	var deploy v1.DeploymentList
+	//MatchingLabels := SecretsRotationMapping.Spec.Labels
+	r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
+
+	//	fmt.Println("List deployments by Label:", deploy)
+
+	for _, deployment := range deploy.Items {
+		// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
+		fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
+		patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-controller-redeployed":"%v"}}}}}`, time.Now().Unix()))
+		if err := r.Patch(ctx, &deployment, client.RawPatch(types.StrategicMergePatchType, patch)); err != nil {
+			fmt.Println("Patch deployment err:", err)
+			return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
+		}
+	}
 
 	if err != nil {
 		fmt.Println("Error", err)

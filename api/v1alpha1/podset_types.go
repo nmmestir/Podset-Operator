@@ -23,6 +23,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// type pour AppConfig
+
 // PodSetSpec defines the desired state of PodSet
 type PodSetSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -31,8 +33,12 @@ type PodSetSpec struct {
 	// Foo is an example field of PodSet. Edit podset_types.go to remove/update
 	//Foo string `json:"foo,omitempty"`
 	//Cible map[string]string 'json:"DeploiementCible"'
-	VersionID string 'json"VersionID"'
-	Labels   map[string]string `json:"Labels,omitempty"`
+	VersionID                  string            `json:"VersionID"`
+	Application                string            `json:"Application"`
+	ClientConfigurationVersion string            `json:"ClientConfigurationVersion"`
+	Configuration              string            `json:"Configuration"`
+	Environment                string            `json:"Environment"`
+	Labels                     map[string]string `json:"Labels,omitempty"`
 
 	// arn et deploiement cible
 }
