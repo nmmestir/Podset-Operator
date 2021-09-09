@@ -44,6 +44,11 @@ type PodSetStatus struct {
 	//PodNames []string 'json:"podNames"'
 	//VersionID string 'json"VersionID"'
 	//identifiant de la version
+	//Application string 'json"Application"'
+	//ClientConfigurationVersion string 'json"ClientConfigurationVersion"'
+	//Configuration string 'json"Configuration"'
+	//Environment string 'json"Environment"'
+	//DeploymentStrategy string 'json"DeploymentStrategy"'
 }
 
 //+kubebuilder:object:root=true

@@ -35,10 +35,10 @@ type PodSetReconciler struct {
 	Scheme *runtime.Scheme
 	Region       string
 	Clock
-	//Application string 
-	//ClientConfigurationVersion int32
-	//Configuration string
-	//Environment string
+	Application string 
+	ClientConfigurationVersion int32
+	Configuration string
+	Environment string
 }
 
 //+kubebuilder:rbac:groups=my.domain,resources=podsets,verbs=get;list;watch;create;update;patch;delete
@@ -81,6 +81,7 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			ClientConfigurationVersion: &r.ClientConfigurationVersion,
 			Configuration: &r.Configuration,
 			Environment: &r.Environment,
+			//To change if in status
 		})
 
 		
@@ -96,9 +97,12 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			continue
 		}
 
+		
+
 		var deploy v1.DeploymentList
 			//MatchingLabels := SecretsRotationMapping.Spec.Labels
 			r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
+			
 			//	fmt.Println("List deployments by Label:", deploy)
 
 			for _, deployment := range deploy.Items {
@@ -115,6 +119,7 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 
 		time.Sleep(30 * time.Minute)
+		// Add the polling
 	}
 	
 
