@@ -33,7 +33,7 @@ type PodSetSpec struct {
 	// Foo is an example field of PodSet. Edit podset_types.go to remove/update
 	//Foo string `json:"foo,omitempty"`
 	//Cible map[string]string 'json:"DeploiementCible"'
-	VersionID                  string            `json:"VersionID"`
+	ClientID                   string            `json:"ClientID"`
 	Application                string            `json:"Application"`
 	ClientConfigurationVersion string            `json:"ClientConfigurationVersion"`
 	Configuration              string            `json:"Configuration"`

@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -27,7 +26,8 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+
+	//"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -38,9 +38,10 @@ import (
 // PodSetReconciler reconciles a PodSet object
 type PodSetReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
-	Region string
+	Log          logr.Logger
+	Scheme       *runtime.Scheme
+	Region       string
+	RequeueAfter time.Duration
 }
 
 //+kubebuilder:rbac:groups=my.domain,resources=podsets,verbs=get;list;watch;create;update;patch;delete
@@ -56,11 +57,11 @@ type PodSetReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
-func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	//ctx := context.Background()
 
 	var PodSet mydomainv1alpha1.PodSet
-	var result map[string]interface{}
+	//var result map[string]interface{}
 
 	if err := r.Get(ctx, req.NamespacedName, &PodSet); err != nil {
 		ctrl.Log.Error(err, "unable to fetch PodSet")
@@ -68,39 +69,52 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	fmt.Println(PodSet.Spec.Labels)
+	r.Region = "eu-west-1"
+
+	//fmt.Println(PodSet.Spec.Labels)
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(r.Region)},
 	)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	svc := appconfig.New(sess)
 
 	config, err := svc.GetConfiguration(&appconfig.GetConfigurationInput{
 		Application:                &PodSet.Spec.Application,
+		ClientId:                   &PodSet.Spec.ClientID,
 		ClientConfigurationVersion: &PodSet.Spec.ClientConfigurationVersion,
 		Configuration:              &PodSet.Spec.Configuration,
 		Environment:                &PodSet.Spec.Environment,
-		//To change if in status
 	})
 
-	err := json.Unmarshal([]byte(*config.Body), &config)
 	if err != nil {
-		fmt.Println("Error", err)
+		fmt.Println(err)
 	}
-	version := result["Configuration-Version"].(map[string]interface{})
 
-	if version != PodSet.Spec.VersionID {
+	fmt.Println(config)
+	fmt.Println(*config.ConfigurationVersion)
+	fmt.Println(PodSet.Spec.ClientConfigurationVersion)
+	fmt.Println(PodSet.Spec.Labels)
+
+	//json.Unmarshal([]byte(config.), &config)
+	//if err != nil {
+	//	fmt.Println("Error", err)
+	//}
+	version := *config.ConfigurationVersion
+
+	if version != PodSet.Spec.ClientConfigurationVersion {
 		fmt.Println("continuing to next loop")
-		continue
+
+		var deploy v1.DeploymentList
+		r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
+		fmt.Println("List deployments by Label:", deploy)
+
 	}
 
-	var deploy v1.DeploymentList
-	//MatchingLabels := SecretsRotationMapping.Spec.Labels
-	r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
-
-	//	fmt.Println("List deployments by Label:", deploy)
-
-	for _, deployment := range deploy.Items {
+	/* for _, deployment := range deploy.Items {
 		// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
 		fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
 		patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-controller-redeployed":"%v"}}}}}`, time.Now().Unix()))
@@ -113,15 +127,14 @@ func (r *PodSetReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if err != nil {
 		fmt.Println("Error", err)
 		return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
-	}
+	} */
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PodSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&mydomainv1alpha1.PodSet{}).
-		Owns(&mydomainv1alpha1.Deployment{}).
 		Complete(r)
 }
