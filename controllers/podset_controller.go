@@ -60,6 +60,12 @@ type PodSetReconciler struct {
 func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	//ctx := context.Background()
 
+	requeue30 := ctrl.Result{RequeueAfter: 30 * time.Second}
+	//requeue5 := ctrl.Result{RequeueAfter: 5 * time.Second}
+	//requeue := ctrl.Result{Requeue: true}
+	//forget := ctrl.Result{}
+	
+
 	var PodSet mydomainv1alpha1.PodSet
 	//var result map[string]interface{}
 
@@ -129,7 +135,7 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
 	} */
 
-	return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
+	return requeue30, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

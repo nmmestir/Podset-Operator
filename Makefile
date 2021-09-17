@@ -94,9 +94,9 @@ test: manifests generate fmt vet ## Run tests.
 ##@ Build
 
 build: generate fmt vet ## Build manager binary.
-	go build -o bin/manager main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -gcflags "-N -l" -o bin/manager main.go
 
-run: manifests generate fmt vet ## Run a controller from your host.
+run: #manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 docker-build: test ## Build docker image with the manager.

@@ -1,0 +1,12 @@
+apiVersion: my.domain/v1alpha1
+kind: PodSet
+metadata:
+  name: podset-sample
+spec:
+  ClientID: 'new'
+  Application: 'PodSetTest'
+  ClientConfigurationVersion: "1"
+  Configuration: 'configuration-pod-set1'
+  Environment: 'dev'
+  Labels:
+    app: podset
