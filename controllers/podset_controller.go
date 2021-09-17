@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -67,7 +68,7 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	
 
 	var PodSet mydomainv1alpha1.PodSet
-	//var result map[string]interface{}
+	var result map[string]interface{}
 
 	if err := r.Get(ctx, req.NamespacedName, &PodSet); err != nil {
 		ctrl.Log.Error(err, "unable to fetch PodSet")
@@ -88,6 +89,20 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	svc := appconfig.New(sess)
 
+	/* var versionnumber int64
+	var applicationid string
+	var configurationid string
+
+	applicationid = "k56ecg8"
+	versionnumber = 1
+	configurationid = "2zndu3c"
+
+	config, err := svc.GetHostedConfigurationVersion(&appconfig.GetHostedConfigurationVersionInput{
+		ApplicationId:          &applicationid,
+		VersionNumber:          &versionnumber,
+		ConfigurationProfileId: &configurationid,
+	}) */
+
 	config, err := svc.GetConfiguration(&appconfig.GetConfigurationInput{
 		Application:                &PodSet.Spec.Application,
 		ClientId:                   &PodSet.Spec.ClientID,
@@ -98,6 +113,7 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if err != nil {
 		fmt.Println(err)
+		return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
 	}
 
 	fmt.Println(config)
@@ -109,6 +125,21 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	//if err != nil {
 	//	fmt.Println("Error", err)
 	//}
+
+	config_content := json.Unmarshal([]byte(config.Content), &result)
+	if config_content != nil {
+		fmt.Println("Error", err)
+	}
+
+	fmt.Println(result)
+
+	config_version := json.Unmarshal([]byte(*config.ConfigurationVersion), &result)
+	if config_version != nil {
+		fmt.Println("Error", err)
+	}
+
+	fmt.Println(result)
+
 	version := *config.ConfigurationVersion
 
 	if version != PodSet.Spec.ClientConfigurationVersion {
