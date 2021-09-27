@@ -152,3 +152,4 @@ func (r *PodSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&mydomainv1alpha1.PodSet{}).
 		Complete(r)
 }
+
