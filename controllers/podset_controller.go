@@ -27,6 +27,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	//"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -63,9 +64,8 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	requeue30 := ctrl.Result{RequeueAfter: 30 * time.Second}
 	//requeue5 := ctrl.Result{RequeueAfter: 5 * time.Second}
-	//requeue := ctrl.Result{Requeue: true}
+	requeue := ctrl.Result{Requeue: true}
 	//forget := ctrl.Result{}
-	
 
 	var PodSet mydomainv1alpha1.PodSet
 	var result map[string]interface{}
@@ -89,20 +89,6 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	svc := appconfig.New(sess)
 
-	/* var versionnumber int64
-	var applicationid string
-	var configurationid string
-
-	applicationid = "k56ecg8"
-	versionnumber = 1
-	configurationid = "2zndu3c"
-
-	config, err := svc.GetHostedConfigurationVersion(&appconfig.GetHostedConfigurationVersionInput{
-		ApplicationId:          &applicationid,
-		VersionNumber:          &versionnumber,
-		ConfigurationProfileId: &configurationid,
-	}) */
-
 	config, err := svc.GetConfiguration(&appconfig.GetConfigurationInput{
 		Application:                &PodSet.Spec.Application,
 		ClientId:                   &PodSet.Spec.ClientID,
@@ -113,7 +99,7 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	if err != nil {
 		fmt.Println(err)
-		return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
+		return requeue, nil
 	}
 
 	fmt.Println(config)
@@ -121,20 +107,15 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	fmt.Println(PodSet.Spec.ClientConfigurationVersion)
 	fmt.Println(PodSet.Spec.Labels)
 
-	//json.Unmarshal([]byte(config.), &config)
-	//if err != nil {
-	//	fmt.Println("Error", err)
-	//}
-
-	config_content := json.Unmarshal([]byte(config.Content), &result)
-	if config_content != nil {
+	config_version := json.Unmarshal([]byte(*config.ConfigurationVersion), &result)
+	if config_version != nil {
 		fmt.Println("Error", err)
 	}
 
 	fmt.Println(result)
 
-	config_version := json.Unmarshal([]byte(*config.ConfigurationVersion), &result)
-	if config_version != nil {
+	config_content := json.Unmarshal([]byte(config.Content), &result)
+	if config_content != nil {
 		fmt.Println("Error", err)
 	}
 
@@ -149,24 +130,20 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
 		fmt.Println("List deployments by Label:", deploy)
 
-	}
-
-	/* for _, deployment := range deploy.Items {
-		// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
-		fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
-		patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-controller-redeployed":"%v"}}}}}`, time.Now().Unix()))
-		if err := r.Patch(ctx, &deployment, client.RawPatch(types.StrategicMergePatchType, patch)); err != nil {
-			fmt.Println("Patch deployment err:", err)
-			return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
+		for _, deployment := range deploy.Items {
+			// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
+			fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
+			patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-secrets-operator-redeloyed":"%v"}}}}}`, time.Now().Unix()))
+			if err := r.Patch(ctx, &deployment, client.RawPatch(types.StrategicMergePatchType, patch)); err != nil {
+				fmt.Println("Patch deployment err:", err)
+				return requeue30, nil
+			}
 		}
-	}
 
-	if err != nil {
-		fmt.Println("Error", err)
-		return ctrl.Result{RequeueAfter: time.Second * r.RequeueAfter}, nil
-	} */
+	}
 
 	return requeue30, nil
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
