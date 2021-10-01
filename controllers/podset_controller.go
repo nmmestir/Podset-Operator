@@ -78,6 +78,10 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	r.Region = "eu-west-1"
 
+	if PodSet.Status.ClientConfigurationVersion == "" {
+		PodSet.Status.ClientConfigurationVersion = "1"
+	}
+
 	//fmt.Println(PodSet.Spec.Labels)
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String(r.Region)},
@@ -92,7 +96,7 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	config, err := svc.GetConfiguration(&appconfig.GetConfigurationInput{
 		Application:                &PodSet.Spec.Application,
 		ClientId:                   &PodSet.Spec.ClientID,
-		ClientConfigurationVersion: &PodSet.Spec.ClientConfigurationVersion,
+		ClientConfigurationVersion: &PodSet.Status.ClientConfigurationVersion,
 		Configuration:              &PodSet.Spec.Configuration,
 		Environment:                &PodSet.Spec.Environment,
 	})
@@ -104,7 +108,7 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	fmt.Println(config)
 	fmt.Println(*config.ConfigurationVersion)
-	fmt.Println(PodSet.Spec.ClientConfigurationVersion)
+	fmt.Println(PodSet.Status.ClientConfigurationVersion)
 	fmt.Println(PodSet.Spec.Labels)
 
 	config_version := json.Unmarshal([]byte(*config.ConfigurationVersion), &result)
@@ -123,21 +127,27 @@ func (r *PodSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	version := *config.ConfigurationVersion
 
-	if version != PodSet.Spec.ClientConfigurationVersion {
+	if version != PodSet.Status.ClientConfigurationVersion {
 		fmt.Println("continuing to next loop")
 
 		var deploy v1.DeploymentList
 		r.List(ctx, &deploy, client.MatchingLabels(PodSet.Spec.Labels))
-		fmt.Println("List deployments by Label:", deploy)
+		//fmt.Println("List deployments by Label:", deploy)
 
 		for _, deployment := range deploy.Items {
 			// Patch the Deployment with new label containing redeployed timestamp, to force redeploy
 			fmt.Println("Rotating deployment", deployment.ObjectMeta.Name)
-			patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-secrets-operator-redeloyed":"%v"}}}}}`, time.Now().Unix()))
+			patch := []byte(fmt.Sprintf(`{"spec":{"template":{"metadata":{"labels":{"aws-secrets-operator-redeployed":"%v"}}}}}`, time.Now().Unix()))
 			if err := r.Patch(ctx, &deployment, client.RawPatch(types.StrategicMergePatchType, patch)); err != nil {
 				fmt.Println("Patch deployment err:", err)
 				return requeue30, nil
 			}
+		}
+		PodSet.Status.ClientConfigurationVersion = version
+		if err := r.Status().Update(ctx, &PodSet); err != nil {
+			ctrl.Log.Error(err, "unable to update PodSet")
+
+			return requeue30, client.IgnoreNotFound(err)
 		}
 
 	}

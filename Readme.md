@@ -47,7 +47,7 @@ The Idea is to have a sample app based on eks-example, that will fetch AppConfig
 
 example of commands
 ```
-$ aws appconfig get-configuration --application PodSetTest --environment dev --configuration configuration-pod-set1 --client-id me file.txt
+$ aws appconfig get-configuration --application HelloWorld --environment TrueEnv --configuration TrueProfile --client-id me file.txt
 {
     "ConfigurationVersion": "1",
     "ContentType": "text/plain"
@@ -56,4 +56,21 @@ $ cat file.txt
 key1=value1
 key2=value2
 key3=value3
-```               
+```   
+
+ARN Service Account to access AppConfig 
+arn:aws:iam::111492154997:policy/Appconfig-access
+
+eksctl utils associate-iam-oidc-provider \
+    --cluster bedrock-cluster \
+    --approve
+
+eksctl create iamserviceaccount \
+    --name podset \
+    --namespace hello-world \
+    --cluster bedrock-cluster \
+    --attach-policy-arn "arn:aws:iam::111492154997:policy/Appconfig-access" \
+    --approve \
+    --override-existing-serviceaccounts
+
+  

@@ -38,8 +38,6 @@ spec:
             properties:
               Application:
                 type: string
-              ClientConfigurationVersion:
-                type: string
               ClientID:
                 description: Foo is an example field of PodSet. Edit podset_types.go
                   to remove/update Foo string `json:"foo,omitempty"` Cible map[string]string
@@ -55,13 +53,17 @@ spec:
                 type: object
             required:
             - Application
-            - ClientConfigurationVersion
             - ClientID
             - Configuration
             - Environment
             type: object
           status:
             description: PodSetStatus defines the observed state of PodSet
+            properties:
+              ClientConfigurationVersion:
+                type: string
+            required:
+            - ClientConfigurationVersion
             type: object
         type: object
     served: true
